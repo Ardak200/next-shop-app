@@ -1,8 +1,8 @@
 import { getAllProducts } from "@/lib/products";
 import Link from "next/link";
 
-export default function ProductsPage() {
-  const products = getAllProducts();
+export default async function ProductsPage() {
+  const products = await getAllProducts();
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
