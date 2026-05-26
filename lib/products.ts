@@ -10,3 +10,11 @@ export async function getProduct(id: string): Promise<Product | undefined> {
   const products = await getAllProducts();
   return products.find((p) => p.id === id);
 }
+
+export async function getRelatedProducts(
+  currentId: string,
+): Promise<Product[]> {
+  await new Promise((r) => setTimeout(r, 1500));
+  const all = await getAllProducts();
+  return all.filter((p) => p.id !== currentId);
+}

@@ -1,6 +1,9 @@
+import { RelatedProducts } from "@/components/RelatedProducts";
+import { RelatedProductsSkeleton } from "@/components/RelatedProductsSkeleton";
 import { getAllProducts, getProduct } from "@/lib/products";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 export async function generateStaticParams() {
   const products = await getAllProducts();
@@ -44,6 +47,12 @@ export default async function ProductPage({
           В корзину
         </button>
       </div>
+
+      <section className="mt-12">
+        <Suspense fallback={<RelatedProductsSkeleton />}>
+          <RelatedProducts currentId={id} />
+        </Suspense>
+      </section>
     </main>
   );
 }
