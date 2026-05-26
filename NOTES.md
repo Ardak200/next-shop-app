@@ -256,18 +256,88 @@ export async function GET() {
 
 ---
 
-## Что дальше — Этап 5
+## Этап 5 — Streaming и UX загрузки
 
-**Тема**: streaming и UX загрузки.
+**Коммиты**:
+- `e0a5a5c feat(catalog): stream the products list with a skeleton`
+- `331ea0e feat(catalog): stream the product detail page with a skeleton`
+- `7ec19d3 style: reserve scrollbar gutter to prevent layout shift`
+- `165a2f4 feat(catalog): stream related products via Suspense boundary`
+- `4bbe7f1 feat(catalog): add error boundary for the product detail page`
+- `8aa60c1 feat(catalog): add custom 404 for missing products`
 
-Прямо сейчас `lib/products.ts` ждёт 500 мс — а пользователь видит **белый экран** всё это время. На этапе 5 добавим:
+### Что сделали
 
-- `loading.tsx` — автоматический skeleton для сегмента.
-- `<Suspense fallback={<...}>` — частичная загрузка (часть страницы готова, часть грузится).
-- `error.tsx` — что показывать, если в Server Component кинуло исключение.
-- `not-found.tsx` — кастомная 404 для случаев, когда `notFound()` сработал.
+- [app/products/loading.tsx](app/products/loading.tsx) — скелетон каталога.
+- [app/products/\[id\]/loading.tsx](app/products/[id]/loading.tsx) — скелетон страницы товара.
+- [components/RelatedProducts.tsx](components/RelatedProducts.tsx) + [components/RelatedProductsSkeleton.tsx](components/RelatedProductsSkeleton.tsx) + `<Suspense>` в [app/products/\[id\]/page.tsx](app/products/[id]/page.tsx) — гранулярный streaming похожих товаров.
+- [app/products/\[id\]/error.tsx](app/products/[id]/error.tsx) — кастомный UI ошибки с `reset()`.
+- [app/products/\[id\]/not-found.tsx](app/products/[id]/not-found.tsx) — кастомная 404 для отсутствующего товара.
+- `scrollbar-gutter: stable` в [app/globals.css](app/globals.css) — горизонтальный CLS.
 
-См. план: [LEARNING_PLAN.md → Этап 5](LEARNING_PLAN.md).
+### Ключевые идеи
+
+**Иерархия boundary**:
+```
+<ErrorBoundary fallback={error.tsx}>
+  <Suspense fallback={loading.tsx}>
+    <NotFoundBoundary fallback={not-found.tsx}>
+      <page.tsx />
+    </NotFoundBoundary>
+  </Suspense>
+</ErrorBoundary>
+```
+
+**`loading.tsx` vs `<Suspense>`**:
+- `loading.tsx` — на **весь сегмент**. Простой, но грубый: вся страница ждёт самое медленное.
+- `<Suspense fallback={...}>` — точечно. Быстрая часть рендерится сразу, медленная «дотекает» позже.
+- Под капотом `loading.tsx` — автоматическая обёртка `<Suspense>` вокруг `page.tsx`. Не магия.
+
+**HTTP streaming** — что технически происходит:
+1. Сервер отдаёт первый кусок HTML сразу: статичную часть + fallback'и Suspense.
+2. По мере того, как async-компоненты резолвятся, сервер «дописывает» `<template>`-блоки в конец ответа.
+3. Маленькие `<script>` после каждого `<template>` подменяют fallback на реальный контент.
+4. Один HTTP-ответ, длительный, отдаваемый частями. Не WebSocket, не SSE — простой HTTP.
+
+Посмотреть это вживую: DevTools → Network → запрос документа → Timing → `Content Download` растянут на длительность медленных Suspense.
+
+**Когда нужен `<Suspense>`** (не «когда долгое», а архитектурно):
+> На странице есть **критичная быстрая часть** (название товара, цена, кнопка купить) и **второстепенная медленная** (похожие товары, отзывы). Suspense не даёт второстепенному блокировать критичное.
+
+**Несколько Suspense — независимые лейны**:
+```tsx
+<Suspense fallback={...}><Rating /></Suspense>      {/* 0.8s */}
+<Suspense fallback={...}><Related /></Suspense>     {/* 1.5s */}
+<Suspense fallback={...}><Reviews /></Suspense>     {/* 3s */}
+```
+Все три async-компонента стартуют параллельно. Появляются по мере готовности.
+
+**`error.tsx` vs `not-found.tsx`**:
+
+| | `error.tsx` | `not-found.tsx` |
+|---|---|---|
+| Триггер | `throw` где угодно в дереве | вызов `notFound()` |
+| Семантика | «сломалось» | «не существует» |
+| HTTP | 500 | **404** (важно для SEO) |
+| Тип компонента | `"use client"` (есть `reset`) | Server Component |
+| Props | `{ error: Error, reset: () => void }` | без пропсов |
+| `error.message` в проде | скрыто, остаётся только `digest` | — |
+
+### Подводные камни Next 16
+
+1. **`notFound()` всегда ДО любого `<Suspense>`.** Как только Suspense зарендерил fallback — HTTP-статус зафиксирован 200 OK, и реальный 404 больше не отдать.
+
+2. **`error.tsx` обязательно `"use client"`.** Прямой `reset: () => void` нельзя сериализовать через server→client границу.
+
+3. **`error.tsx` НЕ ловит ошибки в `layout.tsx` своего сегмента.** Error boundary живёт внутри layout — если layout сам упал, рендерить error UI негде. Для таких случаев — корневой `app/global-error.tsx`.
+
+4. **Skeleton должен повторять разметку реального контента.** Те же теги (`<h1>`/`<p>`/`<Link>`), те же классы, столько же элементов. Иначе CLS при подмене. Самый железный приём — реальный тег с `<span>` внутри, где `text-transparent bg-zinc-200`.
+
+5. **`<a>` vs `<div>` дают разную высоту line-box.** Inline vs block считаются по-разному. Не подменяй типы тегов в скелетоне.
+
+6. **`scrollbar-gutter: stable`** на `html` — резервирует место под скроллбар. Без этого появление/исчезновение скролла двигает центрированный контент по горизонтали.
+
+7. **`<Suspense>` импортируется из `react`**, не из `next`.
 
 ---
 
@@ -280,3 +350,6 @@ export async function GET() {
 5. **Props в Client Component должны быть сериализуемыми** (нет функций, нет классов).
 6. **`"use client"` помечает весь файл и его поддерев**. Не нужно ставить во всех детях.
 7. **Деривация: если что-то можно посчитать на сервере — посчитай на сервере.** Меньше JS у клиента.
+8. **`notFound()` — до Suspense, иначе HTTP 200 навсегда.**
+9. **`error.tsx` — `"use client"`, `not-found.tsx` — Server.**
+10. **Skeleton = те же теги/классы, что и в `page.tsx`** — иначе layout shift.
