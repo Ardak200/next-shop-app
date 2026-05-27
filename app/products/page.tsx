@@ -1,3 +1,4 @@
+import { CategoryFilter } from "@/components/CategoryFilter";
 import { SearchBox } from "@/components/SearchBox";
 import { searchProducts } from "@/lib/products";
 import Link from "next/link";
@@ -5,10 +6,10 @@ import Link from "next/link";
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; cat?: string }>;
 }) {
-  const { q } = await searchParams;
-  const products = await searchProducts(q);
+  const { q, cat } = await searchParams;
+  const products = await searchProducts({ query: q, category: cat });
 
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
@@ -17,6 +18,8 @@ export default async function ProductsPage({
       <div className="mt-6 max-w-md">
         <SearchBox />
       </div>
+
+      <CategoryFilter currentCategory={cat} currentQuery={q} />
 
       {q && (
         <p className="mt-4 text-sm text-zinc-500">

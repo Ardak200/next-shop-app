@@ -19,10 +19,16 @@ export async function getRelatedProducts(
   return all.filter((p) => p.id !== currentId);
 }
 
-export async function searchProducts(query?: string): Promise<Product[]> {
+export async function searchProducts(filters: {
+  query?: string;
+  category?: string;
+}): Promise<Product[]> {
   const all = await getAllProducts();
-  if (!query) return all;
-  const q = query.toLowerCase().trim();
-  if (!q) return all;
-  return all.filter((p) => p.title.toLowerCase().includes(q));
+  const q = filters.query?.toLowerCase().trim();
+
+  return all.filter((p) => {
+    if (filters.category && p.category !== filters.category) return false;
+    if (q && !p.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
 }
