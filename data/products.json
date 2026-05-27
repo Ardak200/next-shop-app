@@ -3,18 +3,35 @@
     "id": "1",
     "title": "Кружка",
     "price": 1200,
-    "description": "Керамическая кружка 350 мл"
+    "description": "Керамическая кружка 350 мл",
+    "category": "dishes"
   },
   {
     "id": "2",
-    "title": "Футболка",
-    "price": 3500,
-    "description": "Хлопок 100%"
+    "title": "Тарелка",
+    "price": 1000,
+    "description": "Керамическая тарелка",
+    "category": "dishes"
   },
   {
     "id": "3",
+    "title": "Футболка",
+    "price": 3500,
+    "description": "Хлопок 100%",
+    "category": "clothing"
+  },
+  {
+    "id": "4",
+    "title": "Шорты",
+    "price": 3000,
+    "description": "Хлопок 100%",
+    "category": "clothing"
+  },
+  {
+    "id": "5",
     "title": "Блокнот",
     "price": 800,
-    "description": "А5, 96 страниц"
+    "description": "А5, 96 страниц",
+    "category": "stationery"
   }
 ]
