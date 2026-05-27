@@ -2,7 +2,7 @@ import { Product } from "@/types/products";
 import data from "@/data/products.json";
 
 export async function getAllProducts(): Promise<Product[]> {
-  await new Promise((r) => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 300));
   return data;
 }
 
@@ -14,7 +14,7 @@ export async function getProduct(id: string): Promise<Product | undefined> {
 export async function getRelatedProducts(
   currentId: string,
 ): Promise<Product[]> {
-  await new Promise((r) => setTimeout(r, 1500));
+  await new Promise((r) => setTimeout(r, 500));
   const all = await getAllProducts();
   return all.filter((p) => p.id !== currentId);
 }
