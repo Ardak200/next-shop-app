@@ -18,3 +18,11 @@ export async function getRelatedProducts(
   const all = await getAllProducts();
   return all.filter((p) => p.id !== currentId);
 }
+
+export async function searchProducts(query?: string): Promise<Product[]> {
+  const all = await getAllProducts();
+  if (!query) return all;
+  const q = query.toLowerCase().trim();
+  if (!q) return all;
+  return all.filter((p) => p.title.toLowerCase().includes(q));
+}
